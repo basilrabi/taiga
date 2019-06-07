@@ -24,15 +24,12 @@ systemctl disable taigaproxy.service
 
 rm -rf $VOL/conf $VOL/data
 
-container_name=(db rabbit front events back proxy)
-podman rm -f ${container_name[@]}
-
-podman image rm docker.io/basilrabi/proxy \
-                docker.io/basilrabi/back \
-                docker.io/dockertaiga/front \
-                docker.io/dockertaiga/events \
-                docker.io/dockertaiga/rabbit \
-                docker.io/postgres:11-alpine
+podman rm -f proxy
+podman rm -f back
+podman rm -f events
+podman rm -f front
+podman rm -f rabbit
+podman rm -f db
 
 exit 0
 

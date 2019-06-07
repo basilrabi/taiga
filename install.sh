@@ -6,58 +6,6 @@ then
   exit 1
 fi
 
-VOL=$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )
-
-mkdir -p $VOL/conf/back
-mkdir -p $VOL/conf/front
-mkdir -p $VOL/conf/proxy
-mkdir -p $VOL/data/db
-mkdir -p $VOL/data/media
-
-container_name=(db rabbit front events back proxy)
-podman rm -f ${container_name[@]}
-
-podman run --name db -dt \
-	--ip 10.88.0.64 \
-	--env-file variables.env \
-	-v $VOL/data/db:/var/lib/postgresql/data:z \
-	--image-volume tmpfs \
-	docker.io/postgres:11-alpine && \
-podman run --name rabbit -dt \
-	--ip 10.88.0.65 \
-	--env-file variables.env \
-	docker.io/dockertaiga/rabbit && \
-podman run --name front -dt \
-	--ip 10.88.0.66 \
-	--env-file variables.env \
-	-v $VOL/conf/front:/taiga-conf:z \
-	--image-volume tmpfs \
-	docker.io/dockertaiga/front && \
-podman run --name events -dt \
-	--ip 10.88.0.67 \
-	--add-host rabbit:10.88.0.65 \
-	--env-file variables.env \
-	docker.io/dockertaiga/events && \
-podman run --name back -dt \
-	--ip 10.88.0.68 \
-	--add-host db:10.88.0.64 \
-	--add-host rabbit:10.88.0.65 \
-	--env-file variables.env \
-	-v $VOL/data/media:/taiga-media:z \
-	-v $VOL/conf/back:/taiga-conf:z \
-	--image-volume tmpfs \
-	docker.io/basilrabi/back && \
-podman run --name proxy -dt \
-	--add-host front:10.88.0.66 \
-	--add-host events:10.88.0.67 \
-	--add-host back:10.88.0.68 \
-	--env-file variables.env \
-	-p 80:80 \
-	-v $VOL/conf/proxy:/taiga-conf:z \
-	--image-volume tmpfs \
-	docker.io/basilrabi/proxy
-podman stop -t 10 ${container_name[@]}
-
 # db service
 
 cat >/etc/systemd/system/taigadb.service <<EOL
@@ -178,6 +126,10 @@ systemctl restart taigafront.service
 systemctl restart taigaevents.service
 systemctl restart taigaback.service
 systemctl restart taigaproxy.service
+
+firewall-cmd --permanent --zone=public --add-service=http
+firewall-cmd --permanent --zone=public --add-service=https
+firewall-cmd --reload
 
 exit 0
 

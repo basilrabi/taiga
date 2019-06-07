@@ -34,12 +34,12 @@ $ hostname -I
 192.169.101.133 fec0::6c3a:a1d0:3468:ac2c 
 ```
 
-## Install
+## Installation
 
-Run installation script:
+Run container script:
 
 ```bash
-sudo ./install.sh
+sudo ./run-containers.sh
 ```
 
 This will pull the required container images and may take some time depending on your network connection.
@@ -67,6 +67,11 @@ Quit the server with CONTROL-C.
 You may now open your browser in `http://192.169.101.133` (*replace the IP address with your own address or host name*).
 You should now see the taiga page.
 
+Then install as service to ensure that containers are running after reboot:
+```bash
+sudo ./install.sh
+```
+
 ## Setting up SMTP
 
 This assumes that your server and your users will use *only* `gmail`.
@@ -82,7 +87,7 @@ After enabling less secure app access, you may now log-out your server's gmail a
 Edit the file `variables.env`.
 
 ```bash
-gedit ~/taiga/variables.env
+gedit variables.env
 ```
 
 Change `SET_EMAIL_BACKEND=False` to `SET_EMAIL_BACKEND=True`.
@@ -93,8 +98,14 @@ Save the file then close.
 Reinstall:
 
 ```bash
-sudo ./install.sh
+sudo ./uninstall.sh
+sudo ./run-containers.sh
+```
 
+Again, wait until database migration is finished then:
+
+```bash
+sudo ./install.sh
 ```
 
 ## Enabling and Sending Email Notifications
