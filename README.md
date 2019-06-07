@@ -1,63 +1,127 @@
-## About
-This is example Docker Compose file for running [Taiga](https://taiga.io) project management platform for agile developers, designers and project managers with taiga-events and ssl-enabled reverse proxy with all images based on alpine:latest.
+# Taiga Installation via containers
 
-## Basic usage
-1) Clone this repository.
-`git clone --depth=1 -b latest https://github.com/docker-taiga/taiga.git`
-2) Adjust hostname, django secret and passwords for postgresql and rabbitmq in `variables.env`.
-2) (Optional) If you want to enable SSL, create `cert` folder and put ssl certificate and key inside. Default names are `fullchain.pem` and `privkey.pem`. This can be changed by adding `CERT_NAME` and `CERT_KEY` environment variables to the service `proxy`. Alternatively, if you use certbot to acquire certificates, point volume `/taiga-cert` of the `proxy` service to the location of certificates, e.g. `/etc/letsencrypt/live/yourdomain.com`.
-4) `docker-compose up`
+This serves as a guide in installing the Taiga Project Management Tool via containers in Fedora 30.
 
-The default username and password taiga creates is `admin` with password `123123`.
+## Setting-Up Environment
 
-## Individual images
-- **Taiga backend**
-<https://github.com/docker-taiga/back>
-[`docker pull dockertaiga/back`](https://hub.docker.com/r/dockertaiga/back/)
-- **Taiga frontend**
-<https://github.com/docker-taiga/front>
-[`docker pull dockertaiga/front`](https://hub.docker.com/r/dockertaiga/front/)
-- **RabbitMQ server**
-<https://github.com/docker-taiga/rabbit>
-[`docker pull dockertaiga/rabbit`](https://hub.docker.com/r/dockertaiga/rabbit/)
-- **Taiga events**
-<https://github.com/docker-taiga/events>
-[`docker pull dockertaiga/events`](https://hub.docker.com/r/dockertaiga/events/)
-- **Nginx reverse proxy**
-<https://github.com/docker-taiga/proxy>
-[`docker pull dockertaiga/proxy`](https://hub.docker.com/r/dockertaiga/proxy/)
+Install podman and text editor:
 
-## Environment variables
-###
-- **TAIGA_HOST** - Taiga hostname to use with this taiga setup.
-- **TAIGA_SCHEME** - Taiga URL scheme (http/https). Default is 'http'.
-- **TAIGA_BACK_HOST** - Backend hostname. Default is `back` service.
-- **TAIGA_FRONT_HOST** - Frontend hostname. Default is `front` service.
-- **EVENTS_HOST** - Events hostname. Default is `events` service.
-- **TAIGA_SECRET** - Django secret key.
-###
-- **ENABLE_SSL** - Enable SSL termination (yes/no). Default is 'yes'.
-- **CERT_NAME** - Name of certificate file. Default is `fullchain.pem`.
-- **CERT_KEY** - Name of certificate key file. Default is `privkey.pem`.
-###
-- **POSTGRES_HOST** - PostgeSQL hostname. Default is `db` service.
-- **POSTGRES_DB** - Database name.
-- **POSTGRES_USER** - PostgreSQL username.
-- **POSTGRES_PASSWORD** - PostgreSQL password.
-###
-- **RABBIT_HOST** - RabbitMQ hostname. Default is `rabbit` service.
-- **RABBIT_USER** - RabbitMQ username. Default is same as `rabbit::RABBIT_USER`.
-- **RABBIT_PASSWORD** - RabbitMQ password. Default is same as `rabbit::RABBIT_PASSWORD`.
-- **RABBIT_VHOST** - RabbitMQ virtual host name. Default is same as `rabbit::RABBIT_VHOST`.
-###
-- **STARTUP_TIMEOUT** - Time to wait for databse to become ready before creating schema and importing default data. Default is 15s.
+```bash
+sudo dnf install -y podman gedit
+```
+
+Clone repo:
+
+```bash
+cd
+git clone https://github.com/basilrabi/taiga.git
+cd taiga
+```
+
+Modify `TAIGA_HOST`:
+
+```bash
+gedit variables.env
+```
+
+Replace `192.169.101.133` with your own IP address or hostname.
+Save and close the file.
+
+You can see your IP addresses via the command `hostname -I`:
+
+```
+$ hostname -I
+192.169.101.133 fec0::6c3a:a1d0:3468:ac2c 
+```
+
+## Installation
+
+Run container script:
+
+```bash
+sudo ./run-containers.sh
+```
+
+This will pull the required container images and may take some time depending on your network connection.
+Wait until `taiga backend` finishes setting-up the database.
+You can see the progress of the database migration via podman:
+
+```bash
+sudo podman logs back
+```
+
+Database migration is finished when you see an output like this:
+
+```
+$ sudo podman logs back
+Trying import local.py settings...
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 07, 2019 - 08:53:04
+Django version 1.11.20, using settings 'settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CONTROL-C.
+```
+
+You may now open your browser in `http://192.169.101.133` (*replace the IP address with your own address or host name*).
+You should now see the taiga page.
+
+Then install as service to ensure that containers are running after reboot:
+```bash
+sudo ./install.sh
+```
+
+## Setting up SMTP
+
+This assumes that your server and your users will use *only* `gmail`.
+
+Create a gmail account that will be used by your server.
+Access the [link](https://www.google.com/settings/security/lesssecureapps) `https://www.google.com/settings/security/lesssecureapps` *in your server browser*.
+You must sign-in using the gmail account that you've just created for your server.
+
+Turn on access for less secure app in the section *Less secure app access*.
+After enabling less secure app access, you may now log-out your server's gmail account.
 
 
-## Configuration
-By default configuration volume is `./conf` with config files `./conf/back/config.py` for backend, `./conf/front/config.json` for frontend and `./conf/proxy/nginx.conf` for reverse proxy. Generated config files are placed here on first run and can be modified to specify e.g. SMTP server configuration.
+Edit the file `variables.env`.
 
-## Persistence
-Volume `./data` contains postgresql data and taiga media files for persistence and backup purposes.
+```bash
+gedit variables.env
+```
 
-## Upgrading
-*//TODO*
+Change `SET_EMAIL_BACKEND=False` to `SET_EMAIL_BACKEND=True`.
+Change the email address `server@gmail.com` in the line `SERVER_EMAIL_USER=server@gmail.com` to the email address that your server will be using.
+Then replace `servermailpassword` with your server's email password in the line `SERVER_EMAIL_PASSWORD=servermailpassword`.
+
+Save the file then close.
+Reinstall:
+
+```bash
+sudo ./uninstall.sh
+sudo ./run-containers.sh
+```
+
+Again, wait until database migration is finished then:
+
+```bash
+sudo ./install.sh
+```
+
+## Enabling and Sending Email Notifications
+
+If you have successfully set up your SMTP access, you may enable email notifications for any changes in the taiga project of your clients.
+An email notification (if there is any update on any of the taiga projects) can be sent manually using the command:
+
+```bash
+sudo podman exec -it back python3 manage.py send_notifications
+```
+
+The common practice is to execute the command above at a regular interval using [cron](https://docs.fedoraproject.org/en-US/fedora/f30/system-administrators-guide/monitoring-and-automation/Automating_System_Tasks/).
+If your are using gmail as SMTP server, take note that there is a 100-150 emails per day limit for a regular account.
+
+## Accessing the App
+
+The initial username is `admin` with a password `123123`.
+You may access the django admin page to add more users in `http://192.169.101.133/admin/` (*take note of the final slash and replace with your own IP address*).
+
