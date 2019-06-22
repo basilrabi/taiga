@@ -33,7 +33,6 @@ podman run --name db -dt \
 	--ip $db_ip \
 	--env-file variables.env \
 	-v $VOL/data/db:/var/lib/postgresql/data:z \
-	--image-volume tmpfs \
 	docker.io/postgres:11-alpine && \
 podman run --name rabbit -dt \
 	--ip $rabbit_ip \
@@ -43,7 +42,6 @@ podman run --name front -dt \
 	--ip $front_ip \
 	--env-file variables.env \
 	-v $VOL/conf/front:/taiga-conf:z \
-	--image-volume tmpfs \
 	docker.io/dockertaiga/front && \
 podman run --name events -dt \
 	--ip $events_ip \
@@ -57,7 +55,6 @@ podman run --name back -dt \
 	--env-file variables.env \
 	-v $VOL/data/media:/taiga-media:z \
 	-v $VOL/conf/back:/taiga-conf:z \
-	--image-volume tmpfs \
 	docker.io/basilrabi/back && \
 podman run --name proxy -dt \
 	--add-host front:$front_ip \
@@ -66,7 +63,6 @@ podman run --name proxy -dt \
 	--env-file variables.env \
 	-p 80:80 \
 	-v $VOL/conf/proxy:/taiga-conf:z \
-	--image-volume tmpfs \
 	docker.io/basilrabi/proxy
 
 exit 0
